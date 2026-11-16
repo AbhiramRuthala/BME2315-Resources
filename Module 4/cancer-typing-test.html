@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cancer Typing Test</title>
+<style>
+  :root {
+    --bg: #f9f8f5;
+    --fg: #1a1a1a;
+    --fg-muted: #666;
+    --border: #d0cec9;
+    --correct: #2d6a2d;
+    --error: #c0392b;
+    --cursor: #1a1a1a;
+    --card: #fff;
+    --card-border: #e0ddd8;
+    --timer-warn: #c0392b;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141412;
+      --fg: #e8e6e1;
+      --fg-muted: #888;
+      --border: #333;
+      --correct: #5aaa5a;
+      --error: #e05a4e;
+      --cursor: #e8e6e1;
+      --card: #1e1d1b;
+      --card-border: #2a2927;
+      --timer-warn: #e05a4e;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #141412;
+    --fg: #e8e6e1;
+    --fg-muted: #888;
+    --border: #333;
+    --correct: #5aaa5a;
+    --error: #e05a4e;
+    --cursor: #e8e6e1;
+    --card: #1e1d1b;
+    --card-border: #2a2927;
+    --timer-warn: #e05a4e;
+    color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: Georgia, 'Times New Roman', serif;
+    max-width: 72ch;
+    margin: 0 auto;
+    padding: 3rem max(16px, env(safe-area-inset-right, 0px)) 3rem max(16px, env(safe-area-inset-left, 0px));
+  }
+
+  h1 {
+    font-size: 0.75rem;
+    font-weight: normal;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin: 0 0 2.5rem;
+  }
+
+  .timer-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  #timer {
+    font-size: 2rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+    transition: color 0.3s;
+  }
+
+  #timer.warn { color: var(--timer-warn); }
+
+  .timer-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  .passage-box {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    padding: 1.25rem 1.5rem;
+    font-size: 1.05rem;
+    line-height: 1.8;
+    margin-bottom: 1rem;
+    min-height: 7rem;
+    position: relative;
+    cursor: text;
+    user-select: none;
+  }
+
+  .char-correct { color: var(--correct); }
+  .char-error { color: var(--error); text-decoration: underline; }
+  .char-pending { color: var(--fg-muted); }
+
+  .cursor-block {
+    display: inline-block;
+    width: 2px;
+    height: 1.1em;
+    background: var(--cursor);
+    vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  #real-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 1px;
+    height: 1px;
+  }
+
+  .instruction {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    padding: 0.9rem 1rem;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin-bottom: 0.3rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+  }
+
+  .stat-sub {
+    font-size: 0.7rem;
+    color: var(--fg-muted);
+    margin-top: 0.1rem;
+  }
+
+  .genome-section {
+    border-top: 1px solid var(--border);
+    padding-top: 1.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .genome-title {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin-bottom: 1rem;
+  }
+
+  .genome-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .genome-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    padding: 0.9rem 1rem;
+  }
+
+  .genome-card .big {
+    font-size: 1.4rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+    line-height: 1.2;
+  }
+
+  .genome-card .sub {
+    font-size: 0.7rem;
+    color: var(--fg-muted);
+    margin-top: 0.25rem;
+  }
+
+  .genome-note {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    line-height: 1.6;
+    padding: 0.75rem 1rem;
+    border-left: 2px solid var(--border);
+    margin-top: 0.25rem;
+  }
+
+  .reset-btn {
+    margin-top: 1.75rem;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--fg);
+    font-family: Georgia, serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    padding: 0.5rem 1.25rem;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .reset-btn:hover { border-color: var(--fg); }
+
+  .done-msg {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    margin-bottom: 0.5rem;
+    font-style: italic;
+  }
+
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<h1>Typing Test — Genome Edition</h1>
+
+<div class="timer-row">
+  <span id="timer">60</span>
+  <span class="timer-label">seconds remaining</span>
+</div>
+
+<div class="passage-box" id="passage-box" tabindex="0">
+  <span id="passage-display"></span>
+  <span class="cursor-block" id="cursor"></span>
+</div>
+
+<input type="text" id="real-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+<p class="instruction">Click the box above and begin typing. The timer starts on your first keystroke.</p>
+
+<p class="done-msg" id="done-msg" hidden>Time's up!</p>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-label">Chars / Min</div>
+    <div class="stat-value" id="stat-cpm">—</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Raw Errors</div>
+    <div class="stat-value" id="stat-errors">—</div>
+    <div class="stat-sub" id="stat-errors-sub"></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Accuracy</div>
+    <div class="stat-value" id="stat-acc">—</div>
+  </div>
+</div>
+
+<div class="genome-section" id="genome-section" hidden>
+  <div class="genome-title">If you were replicating the human genome…</div>
+  <div class="genome-grid">
+    <div class="genome-card">
+      <div class="stat-label">Time to replicate</div>
+      <div class="big" id="g-time">—</div>
+      <div class="sub">at your typing speed</div>
+    </div>
+    <div class="genome-card">
+      <div class="stat-label">Errors before proofreading</div>
+      <div class="big" id="g-errors-raw">—</div>
+      <div class="sub">scaled from your error rate</div>
+    </div>
+    <div class="genome-card">
+      <div class="stat-label">Errors after proofreading</div>
+      <div class="big" id="g-errors-proof">—</div>
+      <div class="sub">you caught <span id="g-caught">—</span>% of your mistakes</div>
+    </div>
+    <div class="genome-card">
+      <div class="stat-label">For reference</div>
+      <div class="big" style="font-size:0.85rem; padding-top:0.2rem">DNA polymerase copies ~1,000 bases/sec with ~1 error per 10 billion bases</div>
+    </div>
+  </div>
+  <div class="genome-note" id="genome-note"></div>
+</div>
+
+<button class="reset-btn" id="reset-btn">Reset</button>
+
+<script>
+  const PASSAGE = "The Dutch oven develops a thick, crackly crust because the trapped steam keeps the surface moist during the first stage of baking. The river had carved that canyon over five million years, and the tourist who stood at the rim spent about four minutes looking before checking the time. Every morning the baker arrived before dawn, measured the flour by weight rather than volume, and folded the dough with a patience that made the apprentice restless. Light travels fast enough to circle the earth more than seven times in a single second, yet the nearest star beyond our sun is still four years away at that speed.";
+
+  const GENOME_BASES = 3_200_000_000;
+  const PROOFREADING_EFFICIENCY = 0.99;
+
+  const passageDisplay = document.getElementById('passage-display');
+  const cursor = document.getElementById('cursor');
+  const realInput = document.getElementById('real-input');
+  const timerEl = document.getElementById('timer');
+  const passageBox = document.getElementById('passage-box');
+  const resetBtn = document.getElementById('reset-btn');
+  const doneMsg = document.getElementById('done-msg');
+  const genomeSection = document.getElementById('genome-section');
+
+  let typed = '', started = false, finished = false;
+  let interval = null, timeLeft = 60;
+
+  function buildDisplay() {
+    passageDisplay.innerHTML = '';
+    for (let i = 0; i < PASSAGE.length; i++) {
+      const span = document.createElement('span');
+      span.textContent = PASSAGE[i];
+      if (i < typed.length) {
+        span.className = typed[i] === PASSAGE[i] ? 'char-correct' : 'char-error';
+      } else {
+        span.className = 'char-pending';
+      }
+      passageDisplay.appendChild(span);
+      if (i === typed.length - 1) passageDisplay.appendChild(cursor);
+    }
+    if (typed.length === 0) passageDisplay.prepend(cursor);
+  }
+
+  function countErrors() {
+    let e = 0;
+    for (let i = 0; i < typed.length; i++) {
+      if (typed[i] !== PASSAGE[i]) e++;
+    }
+    return e;
+  }
+
+  function updateStats(final) {
+    const n = typed.length;
+    const elapsed = 60 - timeLeft;
+    const cpm = final ? n : (elapsed > 0 ? Math.round(n / (elapsed / 60)) : 0);
+    const errs = countErrors();
+    const acc = n > 0 ? Math.round(((n - errs) / n) * 100) : 100;
+
+    document.getElementById('stat-cpm').textContent = (final || elapsed > 0) ? cpm : '—';
+    document.getElementById('stat-errors').textContent = n > 0 ? errs : '—';
+    document.getElementById('stat-errors-sub').textContent = errs > 0 ? `${errs} / ${n} chars` : '';
+    document.getElementById('stat-acc').textContent = n > 0 ? acc + '%' : '—';
+
+    if (final) showGenome(cpm, errs, n);
+  }
+
+  function showGenome(cpm, errs, n) {
+    genomeSection.hidden = false;
+    const totalMins = GENOME_BASES / (cpm || 1);
+    let timeStr;
+    if (totalMins < 60) timeStr = Math.round(totalMins) + ' min';
+    else if (totalMins < 1440) timeStr = (totalMins / 60).toFixed(1) + ' hrs';
+    else if (totalMins < 525600) timeStr = (totalMins / 1440).toFixed(1) + ' days';
+    else timeStr = (totalMins / 525600).toFixed(1) + ' years';
+
+    const errorRate = n > 0 ? errs / n : 0;
+    const rawErrors = Math.round(errorRate * GENOME_BASES);
+    const afterProof = Math.round(rawErrors * (1 - PROOFREADING_EFFICIENCY));
+    const caughtPct = rawErrors > 0 ? Math.round(PROOFREADING_EFFICIENCY * 100) : 100;
+
+    document.getElementById('g-time').textContent = timeStr;
+    document.getElementById('g-errors-raw').textContent = rawErrors > 1_000_000
+      ? (rawErrors / 1_000_000).toFixed(2) + ' million'
+      : rawErrors.toLocaleString();
+    document.getElementById('g-errors-proof').textContent = afterProof.toLocaleString();
+    document.getElementById('g-caught').textContent = caughtPct;
+
+    let note = '';
+    if (errorRate === 0) {
+      note = 'Perfect accuracy — zero errors scaled to the genome. DNA polymerase achieves something similar: ~1 error per 10 billion bases after its proofreading step.';
+    } else if (afterProof === 0) {
+      note = 'Your proofreading caught every error. DNA polymerase works similarly — it has a built-in correction mechanism that catches most mistakes before they become permanent mutations.';
+    } else {
+      note = `Even after proofreading, ${afterProof.toLocaleString()} errors would remain in the genome. Most mutations are harmless — they land in non-coding regions or cause no functional change. But some land in the wrong place. That is where cancer begins.`;
+    }
+    document.getElementById('genome-note').textContent = note;
+  }
+
+  function startTimer() {
+    interval = setInterval(() => {
+      timeLeft--;
+      timerEl.textContent = timeLeft;
+      if (timeLeft <= 10) timerEl.classList.add('warn');
+      updateStats(false);
+      if (timeLeft <= 0) finish();
+    }, 1000);
+  }
+
+  function finish() {
+    clearInterval(interval);
+    finished = true;
+    realInput.disabled = true;
+    timerEl.textContent = '0';
+    doneMsg.hidden = false;
+    updateStats(true);
+  }
+
+  function reset() {
+    clearInterval(interval);
+    typed = ''; started = false; finished = false; timeLeft = 60;
+    timerEl.textContent = '60';
+    timerEl.classList.remove('warn');
+    realInput.value = '';
+    realInput.disabled = false;
+    doneMsg.hidden = true;
+    genomeSection.hidden = true;
+    document.getElementById('stat-cpm').textContent = '—';
+    document.getElementById('stat-errors').textContent = '—';
+    document.getElementById('stat-errors-sub').textContent = '';
+    document.getElementById('stat-acc').textContent = '—';
+    buildDisplay();
+  }
+
+  realInput.addEventListener('input', () => {
+    if (finished) return;
+    if (!started) { started = true; startTimer(); }
+    typed = realInput.value;
+    if (typed.length > PASSAGE.length) {
+      typed = typed.slice(0, PASSAGE.length);
+      realInput.value = typed;
+    }
+    buildDisplay();
+    updateStats(false);
+    if (typed.length === PASSAGE.length) finish();
+  });
+
+  passageBox.addEventListener('click', () => realInput.focus());
+  passageBox.addEventListener('keydown', () => realInput.focus());
+  resetBtn.addEventListener('click', reset);
+
+  buildDisplay();
+</script>
+</body>
+</html>
